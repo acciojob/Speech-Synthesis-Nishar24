@@ -3,72 +3,130 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Text-to-Speech</title>
+    <title>Text-to-Speech Application</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        textarea {
+            width: 100%;
+            height: 100px;
+            margin-bottom: 10px;
+        }
+        .controls {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-top: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            margin-right: 10px;
+        }
+    </style>
 </head>
 <body>
-    <h2>Text-to-Speech Application</h2>
+    <h1>Text-to-Speech Application</h1>
     <textarea id="text-input" placeholder="Enter text here..."></textarea>
-    <br>
-    <label for="voices">Choose Voice:</label>
-    <select id="voices"></select>
-    <br>
-    <label for="rate">Rate:</label>
-    <input type="range" id="rate" min="0.5" max="2" step="0.1" value="1">
-    <span id="rate-value">1</span>
-    <br>
-    <label for="pitch">Pitch:</label>
-    <input type="range" id="pitch" min="0" max="2" step="0.1" value="1">
-    <span id="pitch-value">1</span>
-    <br>
-    <button id="speak">Speak</button>
-    <button id="stop">Stop</button>
+    <div class="controls">
+        <label for="voice-select">Select Voice:</label>
+        <select id="voice-select"></select>
+        <label for="rate">Rate:</label>
+        <input type="range" id="rate" min="0.5" max="2" step="0.1" value="1">
+        <span id="rate-value">1</span>
+        <label for="pitch">Pitch:</label>
+        <input type="range" id="pitch" min="0" max="2" step="0.1" value="1">
+        <span id="pitch-value">1</span>
+    </div>
+    <button id="speak-button">Speak</button>
+    <button id="stop-button">Stop</button>
 
     <script>
-        const textInput = document.getElementById("text-input");
-        const voiceSelect = document.getElementById("voices");
-        const rateInput = document.getElementById("rate");
-        const pitchInput = document.getElementById("pitch");
-        const speakButton = document.getElementById("speak");
-        const stopButton = document.getElementById("stop");
-        const rateValue = document.getElementById("rate-value");
-        const pitchValue = document.getElementById("pitch-value");
-        
-        let voices = [];
+        // Initialize speech synthesis
         const synth = window.speechSynthesis;
-        
-        function populateVoices() {
+        let voices = [];
+        let utterance = null;
+
+        // DOM Elements
+        const textInput = document.getElementById('text-input');
+        const voiceSelect = document.getElementById('voice-select');
+        const rateInput = document.getElementById('rate');
+        const pitchInput = document.getElementById('pitch');
+        const rateValue = document.getElementById('rate-value');
+        const pitchValue = document.getElementById('pitch-value');
+        const speakButton = document.getElementById('speak-button');
+        const stopButton = document.getElementById('stop-button');
+
+        // Fetch available voices and populate the dropdown
+        function populateVoiceList() {
             voices = synth.getVoices();
-            voiceSelect.innerHTML = "";
-            voices.forEach(voice => {
-                const option = document.createElement("option");
-                option.value = voice.name;
+            voiceSelect.innerHTML = ''; // Clear existing options
+            voices.forEach((voice, i) => {
+                const option = document.createElement('option');
                 option.textContent = `${voice.name} (${voice.lang})`;
+                option.value = i;
                 voiceSelect.appendChild(option);
             });
         }
-        
-        synth.onvoiceschanged = populateVoices;
-        
+
+        // Populate voices when the page loads
+        populateVoiceList();
+        if (speechSynthesis.onvoiceschanged !== undefined) {
+            speechSynthesis.onvoiceschanged = populateVoiceList;
+        }
+
+        // Speak function
         function speak() {
-            if (!textInput.value) return;
-            const utterance = new SpeechSynthesisUtterance(textInput.value);
-            const selectedVoice = voices.find(voice => voice.name === voiceSelect.value);
-            if (selectedVoice) utterance.voice = selectedVoice;
-            utterance.rate = rateInput.value;
-            utterance.pitch = pitchInput.value;
+            if (utterance) {
+                synth.cancel(); // Stop any ongoing speech
+            }
+
+            if (!textInput.value.trim()) {
+                alert('Please enter some text!');
+                return;
+            }
+
+            utterance = new SpeechSynthesisUtterance(textInput.value);
+            utterance.voice = voices[voiceSelect.value];
+            utterance.rate = parseFloat(rateInput.value);
+            utterance.pitch = parseFloat(pitchInput.value);
+
             synth.speak(utterance);
         }
-        
-        function stopSpeech() {
-            synth.cancel();
+
+        // Stop function
+        function stop() {
+            if (synth.speaking) {
+                synth.cancel();
+            }
         }
-        
-        speakButton.addEventListener("click", speak);
-        stopButton.addEventListener("click", stopSpeech);
-        rateInput.addEventListener("input", () => rateValue.textContent = rateInput.value);
-        pitchInput.addEventListener("input", () => pitchValue.textContent = pitchInput.value);
-        
-        populateVoices();
+
+        // Event Listeners
+        speakButton.addEventListener('click', speak);
+        stopButton.addEventListener('click', stop);
+
+        rateInput.addEventListener('input', () => {
+            rateValue.textContent = rateInput.value;
+            if (utterance) {
+                utterance.rate = parseFloat(rateInput.value);
+            }
+        });
+
+        pitchInput.addEventListener('input', () => {
+            pitchValue.textContent = pitchInput.value;
+            if (utterance) {
+                utterance.pitch = parseFloat(pitchInput.value);
+            }
+        });
+
+        voiceSelect.addEventListener('change', () => {
+            if (synth.speaking) {
+                stop();
+                speak(); // Restart speech with the new voice
+            }
+        });
     </script>
 </body>
 </html>
